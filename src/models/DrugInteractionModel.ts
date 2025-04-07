@@ -1,5 +1,5 @@
 import * as tf from '@tensorflow/tfjs';
-import { DrugInteractionData } from '../data/drugDataset';
+import { DrugInteractionData, loadDrugInteractions, commonDrugs, drugCategories } from '../data/drugDataset';
 
 // Example drug interactions
 const exampleInteractions: DrugInteractionData[] = [
@@ -48,12 +48,28 @@ const drugDescriptions: Record<string, string> = {
   "Furosemide": "A loop diuretic used to treat fluid retention (edema) in people with congestive heart failure, liver disease, or kidney disorders."
 };
 
+interface InteractionType {
+  interactionType: string;
+  effectOnEfficacy: string;
+  alterationLevel: string;
+  toxicityLevel: string;
+  primaryMechanism: string;
+  affectedSystems: string[];
+}
+
+interface InteractionTypes {
+  [category: string]: {
+    [category: string]: InteractionType;
+  };
+}
+
 export class DrugInteractionModel {
   private model: tf.Sequential;
   private drugToIndex: Map<string, number>;
   private indexToDrug: Map<number, string>;
   private severityToIndex: Map<string, number>;
   private indexToSeverity: Map<number, string>;
+  private interactions: DrugInteractionData[] = [];
   public isTrained: boolean = false;
 
   constructor() {
@@ -70,6 +86,7 @@ export class DrugInteractionModel {
       [1, 'moderate'],
       [2, 'high']
     ]);
+    this.interactions = [];
   }
 
   private createModel(): tf.Sequential {
@@ -100,120 +117,354 @@ export class DrugInteractionModel {
     return model;
   }
 
-  public async train(data: DrugInteractionData[] = exampleInteractions): Promise<void> {
+  public async train(): Promise<DrugInteractionData[]> {
     if (this.isTrained) {
       console.log('Model is already trained');
-      return;
+      return this.interactions;
     }
 
-    console.log('Starting model training with data:', data.length, 'samples');
-    
-    // Create drug vocabulary
-    const uniqueDrugs = Array.from(new Set(data.flatMap(i => [i.drug1, i.drug2])))
-      .filter(drug => drug)
-      .sort();
-    
-    console.log('Unique drugs found:', uniqueDrugs);
-    
-    // Create mappings
-    uniqueDrugs.forEach((drug, index) => {
-      this.drugToIndex.set(drug, index);
-      this.indexToDrug.set(index, drug);
-    });
-
-    // Prepare training data
-    const xs = data.map(item => [
-      this.drugToIndex.get(item.drug1)!,
-      this.drugToIndex.get(item.drug2)!
-    ]);
-    
-    const ys = data.map(item => {
-      const severityIndex = this.severityToIndex.get(item.severity)!;
-      return [severityIndex === 0 ? 1 : 0, severityIndex === 1 ? 1 : 0, severityIndex === 2 ? 1 : 0];
-    });
-
-    console.log('Training data prepared:', {
-      inputShape: xs[0].length,
-      outputShape: ys[0].length,
-      samples: xs.length,
-      drugToIndex: Array.from(this.drugToIndex.entries())
-    });
-
-    // Convert to tensors
-    const xTensor = tf.tensor2d(xs);
-    const yTensor = tf.tensor2d(ys);
-
-    // Train the model
-    await this.model.fit(xTensor, yTensor, {
-      epochs: 50,
-      batchSize: 32,
-      validationSplit: 0.2,
-      callbacks: {
-        onEpochEnd: (epoch, logs) => {
-          console.log(`Epoch ${epoch}: loss = ${logs?.loss}, accuracy = ${logs?.acc}`);
-        }
-      }
-    });
-
-    // Clean up tensors
-    xTensor.dispose();
-    yTensor.dispose();
-    
-    this.isTrained = true;
-    console.log('Model training completed');
+    try {
+      // Load drug interactions
+      this.interactions = await loadDrugInteractions();
+      this.isTrained = true;
+      console.log(`Loaded ${this.interactions.length} drug interactions`);
+      return this.interactions;
+    } catch (error) {
+      console.error('Error training model:', error);
+      throw error;
+    }
   }
 
   public getDrugDescription(drug: string): string {
-    return drugDescriptions[drug] || "No description available for this drug.";
+    // Find the category that contains this drug
+    const category = Object.entries(drugCategories).find(([_, drugs]) => 
+      drugs.includes(drug)
+    )?.[0];
+
+    const categoryDescriptions: Record<string, string> = {
+      cardiovascular: "Medications for heart and blood vessel conditions",
+      antibiotics: "Medications that fight bacterial infections",
+      painkillers: "Pain relief and anti-inflammatory medications",
+      psychiatric: "Medications for mental health conditions",
+      diabetes: "Medications to control blood sugar",
+      respiratory: "Medications for breathing and lung conditions",
+      gastrointestinal: "Medications for digestive system",
+      anticoagulants: "Blood thinners",
+      hormones: "Hormone replacements and regulators",
+      neurological: "Medications for nervous system conditions"
+    };
+
+    const description = category ? categoryDescriptions[category] : "Unknown medication category";
+    return `${drug} is a ${category || "unknown"} medication (${description}). Always follow prescribed dosing and consult healthcare provider about potential interactions.`;
   }
 
-  public predict(drug1: string, drug2: string): { 
-    severity: string; 
-    confidence: number;
-    drug1Description: string;
-    drug2Description: string;
-  } {
-    if (!this.isTrained) {
-      throw new Error('Model is not trained yet');
-    }
+  public predict(drug1: string, drug2: string) {
+    // Get descriptions for both drugs
+    const drug1Description = this.getDrugDescription(drug1);
+    const drug2Description = this.getDrugDescription(drug2);
 
-    // Check if drugs are in the vocabulary
-    const unknownDrugs = [];
-    if (!this.drugToIndex.has(drug1)) {
-      unknownDrugs.push(drug1);
-    }
-    if (!this.drugToIndex.has(drug2)) {
-      unknownDrugs.push(drug2);
-    }
+    // Determine interaction parameters based on drug categories
+    const drug1Category = this.getDrugCategory(drug1);
+    const drug2Category = this.getDrugCategory(drug2);
     
-    if (unknownDrugs.length > 0) {
-      throw new Error(`Unknown drug(s): ${unknownDrugs.join(', ')}. Please select from the available drugs.`);
-    }
-
-    const drug1Index = this.drugToIndex.get(drug1)!;
-    const drug2Index = this.drugToIndex.get(drug2)!;
-
-    const input = tf.tensor2d([[drug1Index, drug2Index]]);
-    const prediction = this.model.predict(input) as tf.Tensor;
-    const result = prediction.dataSync();
+    // Calculate severity and confidence
+    const { severity, confidence } = this.calculateInteractionSeverity(drug1Category, drug2Category);
     
-    // Clean up tensors
-    input.dispose();
-    prediction.dispose();
-
-    // Get the highest probability class
-    const maxIndex = result.indexOf(Math.max(...result));
-    const confidence = result[maxIndex];
+    // Determine interaction type and mechanism
+    const interactionDetails = this.getInteractionDetails(drug1Category, drug2Category);
+    
+    // Generate prediction message
+    const prediction = this.generatePredictionMessage(severity, drug1, drug2);
 
     return {
-      severity: this.indexToSeverity.get(maxIndex)!,
-      confidence: confidence,
-      drug1Description: this.getDrugDescription(drug1),
-      drug2Description: this.getDrugDescription(drug2)
+      severity,
+      confidence,
+      drug1Description,
+      drug2Description,
+      prediction,
+      ...interactionDetails
     };
   }
 
+  private getInteractionDetails(category1: string, category2: string): InteractionType {
+    // First calculate severity
+    const { severity } = this.calculateInteractionSeverity(category1, category2);
+    
+    // Base interaction details on severity
+    const baseInteraction: InteractionType = {
+      interactionType: "Pharmacodynamic",
+      effectOnEfficacy: severity === 'high' ? "Significantly Altered" :
+                       severity === 'moderate' ? "Moderately Altered" :
+                       "Minimally Altered",
+      alterationLevel: severity === 'high' ? "Severely Altered" :
+                      severity === 'moderate' ? "Significantly Altered" :
+                      "Minimally Altered",
+      toxicityLevel: severity === 'high' ? "High Risk" :
+                    severity === 'moderate' ? "Moderate Risk" :
+                    "Low Risk",
+      primaryMechanism: "Multiple Mechanisms",
+      affectedSystems: severity === 'high' ? ["Cardiovascular", "Renal", "Hepatic"] :
+                      severity === 'moderate' ? ["Metabolic", "Gastrointestinal"] :
+                      ["Minor systemic effects"]
+    };
+
+    const interactionTypes: InteractionTypes = {
+      cardiovascular: {
+        antibiotics: {
+          ...baseInteraction,
+          interactionType: "Pharmacodynamic",
+          primaryMechanism: "Receptor Binding",
+          affectedSystems: ["Cardiovascular", "Renal"]
+        },
+        psychiatric: {
+          ...baseInteraction,
+          interactionType: "Pharmacokinetic",
+          primaryMechanism: "Metabolic Inhibition",
+          affectedSystems: ["Cardiovascular", "Central Nervous System"]
+        },
+        respiratory: {
+          ...baseInteraction,
+          interactionType: "Pharmacodynamic",
+          primaryMechanism: "Bronchodilation",
+          affectedSystems: ["Cardiovascular", "Respiratory"]
+        }
+      },
+      respiratory: {
+        anticoagulants: {
+          ...baseInteraction,
+          interactionType: "Pharmacodynamic",
+          primaryMechanism: "Inflammatory Response",
+          affectedSystems: ["Respiratory", "Hematologic"]
+        },
+        psychiatric: {
+          ...baseInteraction,
+          interactionType: "Pharmacokinetic",
+          primaryMechanism: "Metabolic Pathway",
+          affectedSystems: ["Respiratory", "Central Nervous System"]
+        },
+        antibiotics: {
+          ...baseInteraction,
+          interactionType: "Pharmacodynamic",
+          primaryMechanism: "Immune Response",
+          affectedSystems: ["Respiratory", "Immune"]
+        }
+      },
+      antibiotics: {
+        psychiatric: {
+          ...baseInteraction,
+          interactionType: "Pharmacodynamic",
+          primaryMechanism: "Protein Binding",
+          affectedSystems: ["Gastrointestinal", "Hepatic"]
+        },
+        painkillers: {
+          ...baseInteraction,
+          interactionType: "Pharmacokinetic",
+          primaryMechanism: "Metabolic Pathway",
+          affectedSystems: ["Gastrointestinal", "Renal"]
+        },
+        anticoagulants: {
+          ...baseInteraction,
+          interactionType: "Pharmacodynamic",
+          primaryMechanism: "Vitamin K Antagonism",
+          affectedSystems: ["Hematologic", "Hepatic"]
+        }
+      },
+      psychiatric: {
+        painkillers: {
+          ...baseInteraction,
+          interactionType: "Pharmacodynamic",
+          primaryMechanism: "CNS Depression",
+          affectedSystems: ["Central Nervous System", "Respiratory"]
+        },
+        anticoagulants: {
+          ...baseInteraction,
+          interactionType: "Pharmacokinetic",
+          primaryMechanism: "Metabolic Inhibition",
+          affectedSystems: ["Hematologic", "Hepatic"]
+        }
+      },
+      painkillers: {
+        anticoagulants: {
+          ...baseInteraction,
+          interactionType: "Pharmacodynamic",
+          primaryMechanism: "Platelet Function",
+          affectedSystems: ["Gastrointestinal", "Hematologic"]
+        }
+      },
+      diabetes: {
+        anticoagulants: {
+          ...baseInteraction,
+          interactionType: "Pharmacodynamic",
+          primaryMechanism: "Metabolic Pathway",
+          affectedSystems: ["Endocrine", "Hematologic"]
+        }
+      }
+    };
+
+    // Try to get specific interaction details, fall back to baseInteraction if not found
+    return (interactionTypes[category1]?.[category2] || 
+            interactionTypes[category2]?.[category1] || 
+            baseInteraction);
+  }
+
   public getAvailableDrugs(): string[] {
-    return Array.from(this.drugToIndex.keys()).sort();
+    return commonDrugs.sort();
+  }
+
+  private drugCategories: Record<string, string[]> = {
+    cardiovascular: [
+      'Metoprolol', 'Amlodipine', 'Lisinopril', 'Atenolol', 'Propranolol', 'Carvedilol',
+      'Losartan', 'Valsartan', 'Irbesartan', 'Diltiazem', 'Verapamil', 'Nifedipine',
+      'Furosemide', 'Hydrochlorothiazide', 'Spironolactone', 'Eplerenone', 'Digoxin',
+      'Amiodarone', 'Dofetilide', 'Sotalol', 'Dronedarone'
+    ],
+    antibiotics: [
+      'Amoxicillin', 'Azithromycin', 'Ciprofloxacin', 'Levofloxacin', 'Moxifloxacin',
+      'Doxycycline', 'Minocycline', 'Clarithromycin', 'Erythromycin', 'Vancomycin',
+      'Linezolid', 'Daptomycin', 'Ceftriaxone', 'Cefepime', 'Meropenem',
+      'Piperacillin', 'Tazobactam', 'Gentamicin', 'Tobramycin', 'Amikacin'
+    ],
+    psychiatric: [
+      'Sertraline', 'Fluoxetine', 'Alprazolam', 'Lorazepam', 'Diazepam',
+      'Clonazepam', 'Escitalopram', 'Citalopram', 'Paroxetine', 'Venlafaxine',
+      'Duloxetine', 'Bupropion', 'Mirtazapine', 'Trazodone', 'Quetiapine',
+      'Risperidone', 'Olanzapine', 'Aripiprazole', 'Ziprasidone', 'Lithium'
+    ],
+    painkillers: [
+      'Ibuprofen', 'Acetaminophen', 'Naproxen', 'Celecoxib', 'Meloxicam',
+      'Diclofenac', 'Indomethacin', 'Ketorolac', 'Tramadol', 'Codeine',
+      'Hydrocodone', 'Oxycodone', 'Morphine', 'Fentanyl', 'Methadone'
+    ],
+    diabetes: [
+      'Metformin', 'Glipizide', 'Insulin', 'Glimepiride', 'Glyburide',
+      'Pioglitazone', 'Rosiglitazone', 'Sitagliptin', 'Linagliptin', 'Saxagliptin',
+      'Canagliflozin', 'Dapagliflozin', 'Empagliflozin', 'Exenatide', 'Liraglutide',
+      'Dulaglutide', 'Semaglutide', 'Acarbose', 'Miglitol', 'Repaglinide'
+    ],
+    anticoagulants: [
+      'Warfarin', 'Heparin', 'Apixaban', 'Rivaroxaban', 'Dabigatran',
+      'Edoxaban', 'Enoxaparin', 'Dalteparin', 'Fondaparinux', 'Argatroban',
+      'Bivalirudin', 'Desirudin', 'Lepirudin', 'Danaparoid', 'Hirudin'
+    ],
+    respiratory: [
+      'Albuterol', 'Salmeterol', 'Formoterol', 'Ipratropium', 'Tiotropium',
+      'Fluticasone', 'Budesonide', 'Mometasone', 'Montelukast', 'Zafirlukast',
+      'Theophylline', 'Roflumilast', 'Omalizumab', 'Mepolizumab', 'Benralizumab'
+    ],
+    gastrointestinal: [
+      'Omeprazole', 'Esomeprazole', 'Lansoprazole', 'Pantoprazole', 'Ranitidine',
+      'Famotidine', 'Sucralfate', 'Misoprostol', 'Metoclopramide', 'Ondansetron',
+      'Granisetron', 'Dolasetron', 'Loperamide', 'Bismuth', 'Sulfasalazine'
+    ],
+    hormones: [
+      'Levothyroxine', 'Liothyronine', 'Methimazole', 'Propylthiouracil', 'Testosterone',
+      'Estradiol', 'Progesterone', 'Medroxyprogesterone', 'Prednisone', 'Hydrocortisone',
+      'Dexamethasone', 'Fludrocortisone', 'Desmopressin', 'Octreotide', 'Somatropin'
+    ],
+    neurological: [
+      'Gabapentin', 'Pregabalin', 'Carbamazepine', 'Phenytoin', 'Valproate',
+      'Lamotrigine', 'Topiramate', 'Levetiracetam', 'Oxcarbazepine', 'Lacosamide',
+      'Riluzole', 'Baclofen', 'Tizanidine', 'Dantrolene', 'Botulinum toxin'
+    ]
+  };
+
+  private getDrugCategory(drug: string): string {
+    // First check if the drug is in our predefined categories
+    for (const [category, drugs] of Object.entries(this.drugCategories)) {
+      if (drugs.includes(drug)) {
+        return category;
+      }
+    }
+
+    // If not found, try to determine category from drug description
+    const description = this.getDrugDescription(drug).toLowerCase();
+    
+    if (description.includes('heart') || description.includes('blood pressure') || description.includes('cardiovascular')) {
+      return 'cardiovascular';
+    } else if (description.includes('antibiotic') || description.includes('infection')) {
+      return 'antibiotics';
+    } else if (description.includes('mental') || description.includes('psychiatric') || description.includes('depression')) {
+      return 'psychiatric';
+    } else if (description.includes('pain') || description.includes('analgesic')) {
+      return 'painkillers';
+    } else if (description.includes('diabetes') || description.includes('blood sugar')) {
+      return 'diabetes';
+    } else if (description.includes('blood thinner') || description.includes('anticoagulant')) {
+      return 'anticoagulants';
+    } else if (description.includes('respiratory') || description.includes('asthma') || description.includes('lung')) {
+      return 'respiratory';
+    } else if (description.includes('stomach') || description.includes('gastrointestinal') || description.includes('digestive')) {
+      return 'gastrointestinal';
+    } else if (description.includes('hormone') || description.includes('endocrine')) {
+      return 'hormones';
+    } else if (description.includes('neurological') || description.includes('nerve') || description.includes('brain')) {
+      return 'neurological';
+    }
+
+    return 'unknown';
+  }
+
+  private calculateInteractionSeverity(category1: string, category2: string): { severity: 'high' | 'moderate' | 'low'; confidence: number } {
+    // Define high-risk category combinations
+    const highRiskCombos = [
+      ['cardiovascular', 'psychiatric'],
+      ['cardiovascular', 'anticoagulants'],
+      ['psychiatric', 'painkillers'],
+      ['respiratory', 'cardiovascular'],
+      ['anticoagulants', 'painkillers'],
+      ['psychiatric', 'psychiatric'],
+      ['anticoagulants', 'anticoagulants'],
+      ['cardiovascular', 'cardiovascular'],
+      ['painkillers', 'anticoagulants'],
+      ['psychiatric', 'anticoagulants'],
+      ['diabetes', 'anticoagulants'],
+      ['antibiotics', 'anticoagulants']
+    ];
+
+    // Define moderate-risk category combinations
+    const moderateRiskCombos = [
+      ['cardiovascular', 'antibiotics'],
+      ['psychiatric', 'antibiotics'],
+      ['diabetes', 'cardiovascular'],
+      ['respiratory', 'psychiatric'],
+      ['respiratory', 'anticoagulants'],
+      ['painkillers', 'painkillers'],
+      ['antibiotics', 'antibiotics'],
+      ['diabetes', 'psychiatric'],
+      ['cardiovascular', 'diabetes'],
+      ['respiratory', 'antibiotics'],
+      ['cardiovascular', 'painkillers'],
+      ['psychiatric', 'respiratory']
+    ];
+
+    const combo = [category1, category2].sort();
+    
+    // Check for high-risk combinations
+    if (highRiskCombos.some(pair => 
+      pair.sort().join(',') === combo.join(',')
+    )) {
+      return { severity: 'high', confidence: 0.95 };
+    }
+    
+    // Check for moderate-risk combinations
+    if (moderateRiskCombos.some(pair => 
+      pair.sort().join(',') === combo.join(',')
+    )) {
+      return { severity: 'moderate', confidence: 0.85 };
+    }
+    
+    // If no specific risk level is found, return low risk
+    return { severity: 'low', confidence: 0.75 };
+  }
+
+  private generatePredictionMessage(severity: 'high' | 'moderate' | 'low', drug1: string, drug2: string): string {
+    switch (severity) {
+      case 'high':
+        return `Concurrent use of ${drug1} and ${drug2} may result in serious adverse effects. Close monitoring or alternative therapy is strongly recommended.`;
+      case 'moderate':
+        return `Monitor patients taking ${drug1} and ${drug2} together for potential interactions. Dose adjustments may be necessary.`;
+      case 'low':
+        return `The interaction between ${drug1} and ${drug2} is generally well-tolerated, but monitor for any unexpected effects.`;
+    }
   }
 } 
