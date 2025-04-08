@@ -19,11 +19,11 @@ interface PredictedSideEffect {
 }
 
 interface SideEffectPredictorProps {
-  isDarkMode: boolean;
-  onDarkModeChange: (isDarkMode: boolean) => void;
+  darkMode: boolean;
+  onDarkModeChange?: (darkMode: boolean) => void;
 }
 
-const SideEffectPredictor: React.FC<SideEffectPredictorProps> = ({ isDarkMode }) => {
+const SideEffectPredictor: React.FC<SideEffectPredictorProps> = ({ darkMode, onDarkModeChange }) => {
   const [selectedDrugs, setSelectedDrugs] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [personalFactors, setPersonalFactors] = useState<PersonalFactors>({
@@ -135,7 +135,7 @@ const SideEffectPredictor: React.FC<SideEffectPredictorProps> = ({ isDarkMode })
   );
 
   return (
-    <div className={`side-effect-predictor ${isDarkMode ? 'dark' : ''}`}>
+    <div className={`side-effect-predictor ${darkMode ? 'dark' : ''}`}>
       <div className="predictor-header">
         <h2>Side Effect Predictor</h2>
         <p>Enter your medications and personal information to predict potential side effects</p>
@@ -183,6 +183,7 @@ const SideEffectPredictor: React.FC<SideEffectPredictorProps> = ({ isDarkMode })
               </div>
             )}
           </div>
+
           <div className="selected-drugs">
             {selectedDrugs.map(drug => (
               <div key={drug} className="drug-tag">
@@ -270,7 +271,7 @@ const SideEffectPredictor: React.FC<SideEffectPredictorProps> = ({ isDarkMode })
         </div>
 
         <button 
-          className="analyze-button"
+          className="bg-gradient-to-r from-[#4299e1] to-[#3182ce] text-white font-semibold py-2 px-4 rounded-2xl flex items-center justify-center gap-2 w-full max-w-[300px] mx-auto my-6 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:transform-none"
           onClick={predictSideEffects}
           disabled={selectedDrugs.length === 0 || isLoading}
         >
@@ -281,7 +282,7 @@ const SideEffectPredictor: React.FC<SideEffectPredictorProps> = ({ isDarkMode })
             </>
           ) : (
             <>
-              <Activity className="button-icon" />
+              <Activity className="w-5 h-5" />
               Analyze Side Effects
             </>
           )}

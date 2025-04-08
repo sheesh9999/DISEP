@@ -184,6 +184,50 @@ button.bg-gradient-to-r:hover {
   padding: 2rem;
 }
 
+.predictor-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 1.5rem 2rem;
+  background: #4299e1;
+  border-radius: 1rem;
+  margin-bottom: 2rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.predictor-container:hover {
+  background: #3182ce;
+}
+
+.predictor-container h2 {
+  color: white;
+  font-size: 1.5rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.predictor-icon {
+  color: white;
+  width: 24px;
+  height: 24px;
+}
+
+.search-dropdown {
+  background: #1f2937;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  margin-top: 1rem;
+}
+
+.predictor-details {
+  background: #1f2937;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  margin-top: 1rem;
+}
+
 .medication-section,
 .personal-info-section {
   margin-bottom: 2rem;
@@ -417,7 +461,7 @@ button.bg-gradient-to-r:hover {
   max-width: 300px;
   margin: 1.5rem auto;
   padding: 1rem 2rem;
-  background-color: #2563eb;
+  background-color: #4299e1;
   color: white;
   border: none;
   border-radius: 0.5rem;
@@ -428,13 +472,13 @@ button.bg-gradient-to-r:hover {
 }
 
 .analyze-button:hover {
-  background-color: #1d4ed8;
+  background-color: #3182ce;
   transform: translateY(-1px);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .analyze-button:disabled {
-  background-color: #6b7280;
+  background-color: #63b3ed;
   cursor: not-allowed;
   opacity: 0.7;
   transform: none;
@@ -642,4 +686,19 @@ button.bg-gradient-to-r:hover {
 
 .dark .search-results::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* Loading spinner animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-spinner {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid #ffffff;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 } 

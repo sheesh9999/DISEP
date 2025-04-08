@@ -5,12 +5,7 @@ import InteractionChecker from './components/InteractionChecker';
 import SideEffectPredictor from './components/SideEffectPredictor';
 import Profile from './components/Profile';
 
-interface Props {
-  darkMode?: boolean;
-  onDarkModeChange?: (darkMode: boolean) => void;
-}
-
-function App() {
+const App: React.FC = () => {
   const [activeSection, setActiveSection] = useState('home');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
@@ -21,6 +16,7 @@ function App() {
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
+  // Save dark mode preference
   useEffect(() => {
     localStorage.setItem('darkMode', JSON.stringify(darkMode));
     if (darkMode) {
@@ -30,6 +26,7 @@ function App() {
     }
   }, [darkMode]);
 
+  // Listen for system theme changes
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleChange = (e: MediaQueryListEvent) => {
@@ -62,6 +59,6 @@ function App() {
       </main>
     </div>
   );
-}
+};
 
 export default App;
