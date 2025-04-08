@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, X, Sun, Moon, Home, Pill, Activity, User, FileText } from 'lucide-react';
+import { Menu, X, Sun, Moon, Home, Pill, Activity, User } from 'lucide-react';
 
 interface NavigationProps {
   activeSection: string;
@@ -22,8 +22,7 @@ const Navigation: React.FC<NavigationProps> = ({
     { id: 'home', label: 'Home', icon: Home },
     { id: 'interaction', label: 'Interaction Checker', icon: Pill },
     { id: 'side-effects', label: 'Side Effect Predictor', icon: Activity },
-    { id: 'profile', label: 'Profile', icon: User },
-    { id: 'new-page', label: 'New Page', icon: FileText }
+    { id: 'profile', label: 'Profile', icon: User }
   ];
 
   return (
