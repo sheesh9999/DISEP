@@ -4,6 +4,7 @@ import Home from './components/Home';
 import InteractionChecker from './components/InteractionChecker';
 import SideEffectPredictor from './components/SideEffectPredictor';
 import Profile from './components/Profile';
+import NewPage from './components/NewPage';
 
 const App: React.FC = () => {
   const [activeSection, setActiveSection] = useState('home');
@@ -56,6 +57,7 @@ const App: React.FC = () => {
         {activeSection === 'interaction' && <InteractionChecker darkMode={darkMode} onDarkModeChange={setDarkMode} />}
         {activeSection === 'side-effects' && <SideEffectPredictor darkMode={darkMode} />}
         {activeSection === 'profile' && <Profile darkMode={darkMode} />}
+        {activeSection === 'new-page' && <NewPage darkMode={darkMode} />}
       </main>
     </div>
   );
