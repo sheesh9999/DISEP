@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MediPredict Preview Generator</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: sans-serif;
+      text-align: center;
+    }
+    button {
+      margin: 20px;
+      padding: 10px 20px;
+      background-color: #4299e1;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background-color: #3182ce;
+    }
+  </style>
+</head>
+<body>
+  <h1>MediPredict Preview Image</h1>
+  <p>This tool helps you convert the SVG preview to PNG for better social sharing compatibility.</p>
+  
+  <div>
+    <svg id="preview-svg" width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="1200" height="630" fill="url(#gradient)" />
+      
+      <rect x="150" y="150" width="900" height="330" rx="20" fill="white" fill-opacity="0.9" />
+      
+      <text x="600" y="250" font-family="Arial, sans-serif" font-size="60" font-weight="bold" text-anchor="middle" fill="url(#text-gradient)">MediPredict</text>
+      
+      <text x="600" y="320" font-family="Arial, sans-serif" font-size="30" text-anchor="middle" fill="#555">Your Personal Medication Safety Assistant</text>
+      
+      <g transform="translate(300, 380)">
+        <circle cx="0" cy="0" r="40" fill="#4F46E5" />
+        <path d="M-15,-15 L15,15 M-15,15 L15,-15" stroke="white" stroke-width="6" />
+      </g>
+      
+      <g transform="translate(450, 380)">
+        <circle cx="0" cy="0" r="40" fill="#8B5CF6" />
+        <path d="M0,-20 L0,20 M-20,0 L20,0" stroke="white" stroke-width="6" />
+      </g>
+      
+      <g transform="translate(600, 380)">
+        <circle cx="0" cy="0" r="40" fill="#EC4899" />
+        <path d="M-15,0 A15,15 0 0,1 15,0 A15,15 0 0,1 -15,0" stroke="white" stroke-width="6" fill="none" />
+      </g>
+      
+      <g transform="translate(750, 380)">
+        <circle cx="0" cy="0" r="40" fill="#14B8A6" />
+        <path d="M-15,-15 L15,15 M-15,15 L15,-15" stroke="white" stroke-width="6" />
+      </g>
+      
+      <g transform="translate(900, 380)">
+        <circle cx="0" cy="0" r="40" fill="#4299E1" />
+        <path d="M0,-20 L0,20 M-20,0 L20,0" stroke="white" stroke-width="6" />
+      </g>
+      
+      <defs>
+        <linearGradient id="gradient" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#3B82F6" />
+          <stop offset="50%" stop-color="#6366F1" />
+          <stop offset="100%" stop-color="#8B5CF6" />
+        </linearGradient>
+        
+        <linearGradient id="text-gradient" x1="150" y1="250" x2="950" y2="250" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#3B82F6" />
+          <stop offset="100%" stop-color="#8B5CF6" />
+        </linearGradient>
+      </defs>
+    </svg>
+  </div>
+  
+  <button id="download-button">Download as PNG</button>
+  
+  <script>
+    document.getElementById('download-button').addEventListener('click', function() {
+      const svg = document.getElementById('preview-svg');
+      const serializer = new XMLSerializer();
+      const svgString = serializer.serializeToString(svg);
+      
+      // Create a canvas with the same dimensions as the SVG
+      const canvas = document.createElement('canvas');
+      canvas.width = 1200;
+      canvas.height = 630;
+      
+      const ctx = canvas.getContext('2d');
+      
+      // Create an image from the SVG string
+      const img = new Image();
+      img.onload = function() {
+        // Draw the image on the canvas
+        ctx.drawImage(img, 0, 0);
+        
+        // Convert the canvas to a data URL and trigger download
+        const dataUrl = canvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = 'medipredict-preview.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      };
+      
+      // Set the source of the image to a data URL representing the SVG
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
+    });
+  </script>
+</body>
+</html> 
