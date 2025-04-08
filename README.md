@@ -2,6 +2,13 @@
 
 MediPredict is a web application that helps users check drug interactions and predict side effects of medications. The application provides a user-friendly interface for analyzing potential interactions between multiple drugs and predicting possible side effects.
 
+## Quick Start 🚀
+
+Access the application locally at:
+```
+http://localhost:5173
+```
+
 ## Features
 
 - Drug Interaction Checker
@@ -30,7 +37,7 @@ npm install
 npm run dev
 ```
 
-4. Open your browser and navigate to:
+4. Open Chrome and navigate to:
 ```
 http://localhost:5173
 ```
