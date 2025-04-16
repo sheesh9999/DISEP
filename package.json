@@ -2,7 +2,7 @@
   "name": "medipredict-drug-interaction-side-effect-prediction",
   "private": true,
   "version": "0.1.0",
-  "homepage": "https://sheesh9999.github.io/DISEP",
+  "homepage": "https://sheesh9999.github.io/DISEP/",
   "type": "module",
   "scripts": {
     "dev": "vite",

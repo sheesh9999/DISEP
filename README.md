@@ -1,13 +1,10 @@
 # MediPredict - Drug Interaction & Side Effect Prediction
 
-MediPredict is a web application that helps users check drug interactions and predict side effects of medications. The application provides a user-friendly interface for analyzing potential interactions between multiple drugs and predicting possible side effects.
+MediPredict is a comprehensive web application designed to help users and healthcare professionals check drug interactions and predict potential side effects of medications. The application provides a user-friendly interface for analyzing potential interactions between multiple drugs and predicting possible side effects, helping to prevent adverse drug reactions.
 
-## Quick Start 🚀
+## Live Application 🌐
 
-Access the application locally at:
-```
-http://localhost:5173
-```
+Access the application at: [https://sheesh9999.github.io/DISEP](https://sheesh9999.github.io/DISEP)
 
 ## Features
 
@@ -16,39 +13,43 @@ http://localhost:5173
 - User Profile Management
 - Dark Mode Support
 - Responsive Design
+- Real-time Interaction Analysis
+- Comprehensive Drug Database
 
-## Local Development
+## Technology Stack
 
-To run MediPredict locally:
+### Frontend
+- **Framework**: React 18.2.0
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Build Tool**: Vite
+- **State Management**: React Hooks
+- **UI Components**: Custom Components with Tailwind
+- **Data Processing**: TensorFlow.js for ML predictions
 
-1. Clone the repository:
-```bash
-git clone https://github.com/sheesh9999/DISEP.git
-cd DISEP
+### Backend
+- **Runtime**: Node.js
+- **Framework**: Express.js
+- **Database**: MongoDB with Mongoose
+- **Authentication**: JWT
+- **API**: RESTful Architecture
+- **Validation**: Zod
+- **Security**: bcrypt for password hashing
+
+## Project Structure
 ```
-
-2. Install dependencies:
-```bash
-npm install
+├── src/                    # Frontend source code
+│   ├── components/         # React components
+│   ├── data/              # Drug datasets
+│   ├── contexts/          # React contexts
+│   └── types/             # TypeScript types
+├── backend/               # Backend source code
+│   ├── src/              # Backend source
+│   │   ├── controllers/  # Request handlers
+│   │   ├── models/       # Database models
+│   │   └── middleware/   # Custom middleware
+│   └── .env              # Environment configuration
 ```
-
-3. Start the development server:
-```bash
-npm run dev
-```
-
-4. Open Chrome and navigate to:
-```
-http://localhost:5173
-```
-
-## Technologies Used
-
-- React
-- TypeScript
-- Tailwind CSS
-- TensorFlow.js
-- Vite
 
 ## License
 
