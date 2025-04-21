@@ -4,7 +4,7 @@ MediPredict is a comprehensive web application designed to help users and health
 
 ## Live Application 🌐
 
-Access the application at: [http://10.20.99.242:3000](http://10.20.99.242:3000)
+Access the application at: [http://127.0.0.1:3000](http://127.0.0.1:3000)
 
 ## Features
 
