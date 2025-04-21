@@ -2,46 +2,57 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User';
 
-export interface AuthRequest extends Request {
-  user?: any;
-  userId?: string;
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+interface JwtPayload {
+  id: number;
 }
 
-export const protect = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    // 1) Get token from header
-    let token;
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      token = req.headers.authorization.split(' ')[1];
+declare global {
+  namespace Express {
+    interface Request {
+      user?: any;
     }
+  }
+}
 
-    if (!token) {
+export const protect = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Get token from header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
-        status: 'fail',
-        message: 'You are not logged in. Please log in to get access.'
+        status: 'error',
+        message: 'Not authorized to access this route'
       });
     }
 
-    // 2) Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as { id: string };
+    const token = authHeader.split(' ')[1];
 
-    // 3) Check if user still exists
-    const user = await User.findById(decoded.id);
+    // Verify token
+    const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
+
+    // Get user from token
+    const user = await User.findByPk(decoded.id);
     if (!user) {
       return res.status(401).json({
-        status: 'fail',
-        message: 'The user belonging to this token no longer exists.'
+        status: 'error',
+        message: 'User not found'
       });
     }
 
-    // 4) Grant access to protected route
-    req.user = user;
-    req.userId = user.id;
+    // Attach user to request object
+    req.user = {
+      id: user.id,
+      name: user.name,
+      email: user.email
+    };
+
     next();
   } catch (error) {
-    return res.status(401).json({
-      status: 'fail',
-      message: 'Invalid token. Please log in again.'
+    res.status(401).json({
+      status: 'error',
+      message: 'Not authorized to access this route'
     });
   }
 }; 

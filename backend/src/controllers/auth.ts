@@ -2,67 +2,60 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User';
 
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
 // Generate JWT token
 const generateToken = (userId: string): string => {
   return jwt.sign(
     { id: userId },
-    process.env.JWT_SECRET || 'fallback-secret',
-    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    JWT_SECRET,
+    { expiresIn: '7d' }
   );
 };
 
 // Register new user
 export const register = async (req: Request, res: Response) => {
   try {
-    const { username, email, password } = req.body;
+    const { name, email, password } = req.body;
 
-    // Validate required fields
-    if (!username || !email || !password) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Please provide username, email and password'
-      });
-    }
-
-    // Check if user exists
-    const existingUser = await User.findOne({ 
-      $or: [{ email }, { username }] 
-    });
-
+    // Check if user already exists
+    const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
       return res.status(400).json({
         status: 'error',
-        message: 'User with this email or username already exists'
+        message: 'User already exists'
       });
     }
 
-    // Create user
-    const newUser = await User.create({
-      username,
+    // Create new user
+    const user = await User.create({
+      name,
       email,
       password
     });
 
-    // Generate token
-    const token = generateToken(newUser._id);
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user.id },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
-    // Send response
     res.status(201).json({
       status: 'success',
       data: {
-        token,
         user: {
-          id: newUser._id,
-          username: newUser.username,
-          email: newUser.email
-        }
+          id: user.id,
+          name: user.name,
+          email: user.email
+        },
+        token
       }
     });
   } catch (error: any) {
-    console.error('Registration error:', error);
-    res.status(500).json({
+    res.status(400).json({
       status: 'error',
-      message: error.message || 'Registration failed'
+      message: error.message
     });
   }
 };
@@ -72,17 +65,8 @@ export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
-    // Validate required fields
-    if (!email || !password) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Please provide email and password'
-      });
-    }
-
     // Find user
-    const user = await User.findOne({ email }).select('+password');
-    
+    const user = await User.findOne({ where: { email } });
     if (!user) {
       return res.status(401).json({
         status: 'error',
@@ -91,42 +75,43 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // Check password
-    const isPasswordCorrect = await user.comparePassword(password);
-    
-    if (!isPasswordCorrect) {
+    const isValid = await user.validatePassword(password);
+    if (!isValid) {
       return res.status(401).json({
         status: 'error',
         message: 'Invalid credentials'
       });
     }
 
-    // Generate token
-    const token = generateToken(user._id);
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user.id },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
-    // Send response
-    res.status(200).json({
+    res.json({
       status: 'success',
       data: {
-        token,
         user: {
-          id: user._id,
-          username: user.username,
+          id: user.id,
+          name: user.name,
           email: user.email
-        }
+        },
+        token
       }
     });
   } catch (error: any) {
-    console.error('Login error:', error);
-    res.status(500).json({
+    res.status(400).json({
       status: 'error',
-      message: error.message || 'Login failed'
+      message: error.message
     });
   }
 };
 
 // Logout user
-export const logout = (req: Request, res: Response) => {
-  res.status(200).json({
+export const logout = async (req: Request, res: Response) => {
+  res.json({
     status: 'success',
     message: 'Logged out successfully'
   });
